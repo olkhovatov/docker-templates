@@ -1,0 +1,17 @@
+/projects/*
+!/projects/all
+
+/projects/all/data/mysql/*
+/projects/all/data/rabbitmq/*
+/projects/all/data/redis/*
+
+/front_proxy/docker/nginx/projects/*
+!/front_proxy/docker/nginx/projects/all.loc.ssl
+!/front_proxy/docker/nginx/projects/all.loc.conf
+
+
+*.log
+*.gz
+*.sql
+
+!/**/.gitkeep

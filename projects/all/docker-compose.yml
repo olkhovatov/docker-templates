@@ -1,0 +1,109 @@
+version: '3.7'
+
+networks:
+  projects_network:
+    external: true
+
+services:
+  nginx:
+    restart: 'no'
+    build:
+      context: ./docker/nginx/${NGINX_VERSION}
+      dockerfile: Dockerfile
+      args:
+        USER_ID: ${USER_ID}
+        GROUP_ID: ${GROUP_ID}
+    volumes:
+      - ${DOCUMENT_ROOT_PATH}:/var/www/public:rw
+      - ./docker/nginx/${NGINX_VERSION}/project.conf:/etc/nginx/conf.d/project.conf:ro
+      - ./docker/nginx/ssl:/etc/nginx/conf.d/ssl:ro
+      - ${LOG_PATH}/nginx:/var/log/nginx:rw
+    hostname: ${PROJECT_DOMAIN}
+    networks:
+      projects_network:
+        aliases:
+          - ${PROJECT_DOMAIN}
+    expose:
+      - 80
+      - 443
+
+  php-fpm:
+    restart: 'no'
+    build:
+      context: ./docker/php-fpm/${PHP_VERSION}
+      dockerfile: Dockerfile
+      args:
+        USER_ID: ${USER_ID}
+        GROUP_ID: ${GROUP_ID}
+    volumes:
+      - ${DOCUMENT_ROOT_PATH}:/var/www/public:rw
+      - ${LOG_PATH}/php:/var/log/php:rw
+      - ./docker/php-fpm/${PHP_VERSION}/php.ini:/usr/local/etc/php/php.ini:ro
+      - ./docker/php-fpm/${PHP_VERSION}/php-fpm.conf:/usr/local/etc/php-fpm.d/www.conf:ro
+    networks:
+      - projects_network
+
+  mysql:
+    restart: 'no'
+    image: mysql:${MYSQL_VERSION}
+    volumes:
+      - ./data/mysql/${MYSQL_VERSION}:/var/lib/mysql:rw
+      - ./docker/mysql/${MYSQL_VERSION}/my.cnf:/etc/mysql/conf.d/my.cnf:ro
+    expose:
+      - 3306
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    hostname: db.${PROJECT_DOMAIN}
+    networks:
+      projects_network:
+        aliases:
+          - db.${PROJECT_DOMAIN}
+
+  redis:
+    image: redis:${REDIS_VERSION}
+    volumes:
+      - ./docker/redis/${REDIS_VERSION}/redis.conf:/redis.conf:ro
+      - ./data/redis:/data:rw
+    networks:
+      projects_network:
+        aliases:
+          - redis.${PROJECT_DOMAIN}
+    expose:
+      - 6379
+    command: ["redis-server", "/redis.conf"]
+
+  memcached:
+    image: memcached:${MEMCACHED_VERSION}
+    networks:
+      projects_network:
+        aliases:
+          - memcached.${PROJECT_DOMAIN}
+    expose:
+      - 11211
+    command: ["-m", "128", "-c", "512", "-n", "128", "-f", "1.1", "-L"]
+
+  adminer:
+    image: adminer
+    restart: 'no'
+    networks:
+      - projects_network
+    expose:
+      - 8080
+
+  rabbitmq:
+    image: rabbitmq:${RABBITMQ_VERSION}-management
+    volumes:
+      - ./docker/rabbitmq/${RABBITMQ_VERSION}/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - ./data/rabbitmq/${RABBITMQ_VERSION}:/var/lib/rabbitmq:rw
+      - ${LOG_PATH}/rabbitmq:/var/log/rabbitmq/log/:rw
+    networks:
+      projects_network:
+        aliases:
+          - rabbitmq.${PROJECT_DOMAIN}
+    expose:
+      - 5672
+      - 5673
+      - 15672

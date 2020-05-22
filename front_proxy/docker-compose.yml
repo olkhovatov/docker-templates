@@ -1,0 +1,27 @@
+version: '3.7'
+
+networks:
+  projects_network:
+    name: projects_network
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.20.0.0/16
+
+services:
+  nginx:
+    restart: 'no'
+    #restart: 'always'
+    image: nginx:1.17
+    volumes:
+      - ./docker/nginx/include_projects.conf:/etc/nginx/conf.d/include_projects.conf:ro
+      - ./docker/nginx/projects:/etc/nginx/projects:ro
+      - ./data/log/nginx:/var/log/nginx
+    networks:
+      projects_network:
+    ports:
+      - 80:80
+      - 8080:8080
+      - 443:443
+      - 15672:15672
